@@ -1,0 +1,44 @@
+#include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "esp_wifi.h"
+#include "nvs_flash.h"
+#include "esp_event.h"
+#include "esp_netif.h"
+#include "string.h"
+#include "socket.h"
+#include "connectWiFi.h"
+
+void app_main(void)
+{
+    wifiConnect("Co", "SSID", "password", NULL, NULL);
+    while (wifiStatus != 1010)
+    {
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    };
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(80);
+    addr.sin_addr.s_addr = inet_addr("23.192.228.80");
+    if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+        return;
+
+    char header[] = "GET /index.html HTTP/1.1\r\n"
+                    "Host:example.com\r\n\r\n";
+    int n = write(sockfd, header, strlen(header));
+
+    int len = 1024 * 2;
+    char buffer[len];
+    int m = 0;
+    do
+    {
+        n = read(sockfd, buffer + m, len - m - 1);
+        if (n <= 0)
+            break;
+        m = m + n;
+        buffer[m] = 0;
+        printf("\ndata received %d\n\n", n);
+        printf("%s\n", buffer);
+    } while (true);
+    printf("Final buffer\n\n%s\n", buffer);
+}
